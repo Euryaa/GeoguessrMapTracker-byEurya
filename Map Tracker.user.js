@@ -7,6 +7,8 @@
 // @grant        GM_addStyle
 // @run-at       document-start
 // @license      BSD-2-Clause
+// @downloadURL  https://update.greasyfork.org/scripts/553372/Geoguessr%20Map%20Tracker%20by%20Eurya.user.js
+// @updateURL    https://update.greasyfork.org/scripts/553372/Geoguessr%20Map%20Tracker%20by%20Eurya.meta.js
 // ==/UserScript==
 /* global google */
 
@@ -62,6 +64,28 @@ XMLHttpRequest.prototype.open = function(method, url) {
     }
     return originalOpen.apply(this, arguments);
 };
+
+    const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const response = await originalFetch.apply(this, args);
+    const cloned = response.clone();
+    cloned.text().then(text => {
+        const pattern = /-?\d+\.\d+,-?\d+\.\d+/g;
+        const match = text.match(pattern);
+        if (match && match.length > 0) {
+            const coords = match[0].split(",");
+            currentRoundCoordinates.lat = parseFloat(coords[0]);
+            currentRoundCoordinates.lng = parseFloat(coords[1]);
+            if (currentRoundCoordinates.lat !== lastKnownCoordinates.lat ||
+                currentRoundCoordinates.lng !== lastKnownCoordinates.lng) {
+                updateMapPosition();
+                lastKnownCoordinates = Object.assign({}, currentRoundCoordinates);
+            }
+        }
+    }).catch(()=>{});
+    return response;
+};
+
 
 // Panel ve draggable
 function createPanel() {
@@ -365,6 +389,11 @@ function isCoordInCountry(lat,lng,c){
 
 // Observerlar
 function observeRoundChanges(){ const target=document.getElementById('__next')||document.body; if(!target) return; const observer=new MutationObserver(()=>{ updateMapPosition(); }); observer.observe(target,{childList:true,subtree:true}); }
+setInterval(() => {
+    if (currentRoundCoordinates.lat && currentRoundCoordinates.lng) {
+        updateMapPosition();
+    }
+}, 3000);
 function observeGameChanges(){ const target = document.getElementById('__next') || document.body; if(!target) return; const observer = new MutationObserver(() => {}); observer.observe(target,{childList:true,subtree:true}); }
 function makeDraggable(element){ const header=element.querySelector('#panel-header'); if(!header) return; let pos1=0,pos2=0,pos3=0,pos4=0; header.onmousedown=e=>{ e.preventDefault(); pos3=e.clientX; pos4=e.clientY; document.onmouseup=()=>{document.onmouseup=null;document.onmousemove=null;}; document.onmousemove=e=>{ e.preventDefault(); pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY; element.style.top=(element.offsetTop-pos2)+'px'; element.style.left=(element.offsetLeft-pos1)+'px'; }; }; }
 function observePanelResize(panel){ const observer=new ResizeObserver(()=>{ if(map) google.maps.event.trigger(map,'resize'); }); observer.observe(panel); }
