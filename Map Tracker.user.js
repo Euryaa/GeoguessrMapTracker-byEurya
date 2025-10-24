@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Geoguessr Map Tracker by Eurya
 // @namespace    http://tampermonkey.net/
-// @version      26.0.1
-// @description  GeoGuessr'da gelen konumu otomatik olarak algılayıp panel aracılığıyla oyuncuya gösteren akıllı zoom özellikli bir araç. 
+// @version      26.0.2
+// @description  A tool with smart zoom that automatically detects the incoming location in GeoGuessr and displays it to the player via the panel. 
 // @match        https://www.geoguessr.com/*
 // @grant        GM_addStyle
 // @run-at       document-start
@@ -19,7 +19,7 @@ const PANEL_ID = 'eurya-gmaps-panel';
 const MAP_ID = 'eurya-gmaps-map';
 const ICON_URL = 'https://i.ibb.co/VY5Jz0nB/icon.png';
 const WC25_LOGO = 'https://images.squarespace-cdn.com/content/v1/636e083394b53b69d6c3e3fb/c5706bfb-12d7-4fec-b440-adc2849c5862/GG+WC25+%28Logo%29.png';
-const WC25_URL = 'https://www.geoguessr.com/tr';
+const WC25_URL = 'https://www.geoguessr.com/';
 const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE';
 
 let map, marker, mapReady = false;
@@ -87,7 +87,7 @@ window.fetch = async function(...args) {
 };
 
 
-// Panel ve draggable
+// Panel and draggable
 function createPanel() {
     if (document.getElementById(PANEL_ID)) return;
     const panel = document.createElement('div');
@@ -196,7 +196,7 @@ function setupMap() {
     mapReady = true;
 }
 
-// Ülke etiketi ayarları
+// Country Label Settings
 function updateMapPosition() {
     if (!mapReady || !marker) return;
     const { lat, lng } = currentRoundCoordinates;
@@ -212,6 +212,7 @@ function updateMapPosition() {
     });
 }
 
+// Smart Zoom for Countries
 function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Bangladesh")) return 5.7;
     if(isCoordInCountry(lat,lng,"Sri Lanka")) return 6;
@@ -284,7 +285,7 @@ function getZoomLevelForLatLng(lat,lng){
     return 5;
 }
 
-// Koordinat kontrolleri
+// Coordinate controls
 function isMediumEuropeanCountry(lat,lng){ const m=["Romania","Bulgaria","Hungary","Croatia","Slovenia","Serbia","Bosnia","Moldova","Poland","Lithuania","Latvia","Estonia","Netherlands","Belgium"]; return m.some(c=>isCoordInCountry(lat,lng,c)); }
 function isLargeEuropeanCountry(lat,lng){ const l=["Italy","United Kingdom","Greece","Spain","France","Germany"]; return l.some(c=>isCoordInCountry(lat,lng,c)); }
 function isSmallEuropeanCountry(lat,lng){ const s=["San Marino","Monaco","Liechtenstein","Andorra"]; return s.some(c=>isCoordInCountry(lat,lng,c)); }
@@ -387,7 +388,7 @@ function isCoordInCountry(lat,lng,c){
     }
 }
 
-// Observerlar
+// Observers
 function observeRoundChanges(){ const target=document.getElementById('__next')||document.body; if(!target) return; const observer=new MutationObserver(()=>{ updateMapPosition(); }); observer.observe(target,{childList:true,subtree:true}); }
 setInterval(() => {
     if (currentRoundCoordinates.lat && currentRoundCoordinates.lng) {
@@ -398,7 +399,7 @@ function observeGameChanges(){ const target = document.getElementById('__next') 
 function makeDraggable(element){ const header=element.querySelector('#panel-header'); if(!header) return; let pos1=0,pos2=0,pos3=0,pos4=0; header.onmousedown=e=>{ e.preventDefault(); pos3=e.clientX; pos4=e.clientY; document.onmouseup=()=>{document.onmouseup=null;document.onmousemove=null;}; document.onmousemove=e=>{ e.preventDefault(); pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY; element.style.top=(element.offsetTop-pos2)+'px'; element.style.left=(element.offsetLeft-pos1)+'px'; }; }; }
 function observePanelResize(panel){ const observer=new ResizeObserver(()=>{ if(map) google.maps.event.trigger(map,'resize'); }); observer.observe(panel); }
 
-// Control ile aç/kapa
+// Open/Close with Ctrl Key
 let panelVisible = false;
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Control') {
