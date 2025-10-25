@@ -220,7 +220,7 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Uruguay")) return 5.5;
     if(isCoordInCountry(lat,lng,"Gibraltar")) return 12.2;
     if(isCoordInCountry(lat,lng,"India")) return 4;
-    if(isCoordInCountry(lat, lng,"Northern Ireland")) return 7;
+    if(isCoordInCountry(lat,lng,"Northern Ireland")) return 7;
     if(isCoordInCountry(lat,lng,"Singapore")) return 9.8;
     if(isCoordInCountry(lat,lng,"Liechtenstein")) return 9.7;
     if(isCoordInCountry(lat,lng,"Canary Islands")) return 6;
@@ -229,12 +229,12 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Christmas Island")) return 10.2;
     if(isCoordInCountry(lat,lng,"Cocos Islands")) return 10.5;
     if(isCoordInCountry(lat,lng,"Macau")) return 9.3;
-    if(isCoordInCountry(lat, lng, "Ireland")) return 6;
-    if(isCoordInCountry(lat, lng,"Ecuador")) return 6;
-    if(isCoordInCountry(lat, lng,"Colombia")) return 5;
+    if(isCoordInCountry(lat,lng, "Ireland")) return 6;
+    if(isCoordInCountry(lat,lng,"Ecuador")) return 6;
+    if(isCoordInCountry(lat,lng,"Colombia")) return 5;
     if(isCoordInCountry(lat,lng,"North Macedonia")) return 7;
     if(isCoordInCountry(lat, lng,"Bolivia")) return 4.7;
-    if(isCoordInCountry(lat, lng,"Peru")) return 5;
+    if(isCoordInCountry(lat,lng,"Peru")) return 5;
     if(isCoordInCountry(lat,lng,"Malaysia")) return 6;
     if(isCoordInCountry(lat,lng,"Brazil")) return 3.5;
     if(isCoordInCountry(lat,lng,"Kyrgyzstan")) return 5.4;
@@ -270,7 +270,7 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Denmark")) return 6;
     if(isCoordInCountry(lat,lng,"Sweden")) return 4.4;
     if(isCoordInCountry(lat,lng,"Italy")) return 5.7;
-    if(isCoordInCountry(lat, lng,"Greenland")) return 3.5;
+    if(isCoordInCountry(lat,lng,"Greenland")) return 3.5;
     if(isCoordInCountry(lat,lng,"Mexico")) return 4.2;
     if(isCoordInCountry(lat,lng,"Taiwan")) return 6.3;
     if(isCoordInCountry(lat,lng,"Hong Kong")) return 9;
@@ -416,6 +416,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 })();
+
 
 
 
