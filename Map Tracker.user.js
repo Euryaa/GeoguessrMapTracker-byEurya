@@ -1,45 +1,43 @@
 // ==UserScript==
 // @name         Geoguessr Map Tracker by Eurya
 // @namespace    http://tampermonkey.net/
-// @version      26.0.2
-// @description  A tool with smart zoom that automatically detects the incoming location in GeoGuessr and displays it to the player via the panel. 
+// @version      26.0.3
+// @description  A tool with smart zoom that automatically detects the incoming location in GeoGuessr and displays it to the player via the panel.
 // @match        https://www.geoguessr.com/*
 // @grant        GM_addStyle
 // @run-at       document-start
 // @license      BSD-2-Clause
-// @downloadURL  https://update.greasyfork.org/scripts/553372/Geoguessr%20Map%20Tracker%20by%20Eurya.user.js
-// @updateURL    https://update.greasyfork.org/scripts/553372/Geoguessr%20Map%20Tracker%20by%20Eurya.meta.js
 // ==/UserScript==
 /* global google */
-
+ 
 (function() {
 'use strict';
-
+ 
 const PANEL_ID = 'eurya-gmaps-panel';
 const MAP_ID = 'eurya-gmaps-map';
 const ICON_URL = 'https://i.ibb.co/VY5Jz0nB/icon.png';
 const WC25_LOGO = 'https://images.squarespace-cdn.com/content/v1/636e083394b53b69d6c3e3fb/c5706bfb-12d7-4fec-b440-adc2849c5862/GG+WC25+%28Logo%29.png';
 const WC25_URL = 'https://www.geoguessr.com/';
 const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE';
-
+ 
 let map, marker, mapReady = false;
 let currentRoundCoordinates = { lat: null, lng: null };
 let lastKnownCoordinates = { lat: null, lng: null };
-
+ 
 // CSS
 GM_addStyle(`
     .shine-panel::before { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(45deg, rgba(224,247,255,0) 25%, rgba(255,255,255,0.4) 50%, rgba(192,232,255,0) 75%); background-size: 400% 400%; animation: shine45 2.5s linear infinite; pointer-events: none; }
     @keyframes shine45 { 0% { background-position: 200% 200%; } 100% { background-position: -200% -200%; } }
-
+ 
     .eurya-shine { font-weight:600; font-size:18px; color: #ffffff; background: linear-gradient(45deg, #e0f7ff 25%, #ffffff 50%, #c0e8ff 75%); background-size: 200% 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shine 2.5s linear infinite; }
     @keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
+ 
     #toggle-controls.shine { background: linear-gradient(45deg, #e0f7ff 25%, #ffffff 50%, #c0e8ff 75%); background-size: 200% 200%; color: black; animation: shineBtn 2s linear infinite; }
     @keyframes shineBtn { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
+ 
     #country-label { position: absolute; top: 35px; left: 50%; transform: translateX(-50%) scale(1.2); background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(180,255,255,1)); color: black; font-size: 8px; font-weight: 540; padding: 2px 8px; border-radius: 6px; box-shadow: 0 0 15px rgba(255,255,255,0.9); z-index: 9; pointer-events: none; white-space: nowrap; display:none; transition: all 0.3s ease; }
 `);
-
+ 
 // XHR hijack
 const originalOpen = XMLHttpRequest.prototype.open;
 XMLHttpRequest.prototype.open = function(method, url) {
@@ -57,6 +55,7 @@ XMLHttpRequest.prototype.open = function(method, url) {
                        currentRoundCoordinates.lng !== lastKnownCoordinates.lng) {
                         updateMapPosition();
                         lastKnownCoordinates = Object.assign({}, currentRoundCoordinates);
+                        userInteracted = false;
                     }
                 }
             } catch(e){}
@@ -64,7 +63,7 @@ XMLHttpRequest.prototype.open = function(method, url) {
     }
     return originalOpen.apply(this, arguments);
 };
-
+ 
     const originalFetch = window.fetch;
 window.fetch = async function(...args) {
     const response = await originalFetch.apply(this, args);
@@ -85,8 +84,8 @@ window.fetch = async function(...args) {
     }).catch(()=>{});
     return response;
 };
-
-
+ 
+ 
 // Panel and draggable
 function createPanel() {
     if (document.getElementById(PANEL_ID)) return;
@@ -108,29 +107,29 @@ function createPanel() {
     `;
     panel.style.cssText = `position: fixed; top: 10px; right: 10px; z-index: 99999; width: 280px; height: 350px; background: #1a1a1a; border: 2px solid #ffffff; border-radius: 8px; box-shadow: 0 4px 15px rgba(255,255,255,0.3); display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow: hidden;`;
     document.body.appendChild(panel);
-
+ 
     makeDraggable(panel);
     initMapOnce();
     observeRoundChanges();
     observeGameChanges();
     observePanelResize(panel);
-
+ 
     const toggleBtn = document.getElementById('toggle-controls');
     toggleBtn.style.cssText = `position: absolute; top: 0px; left: 50%; width: 20px; height: 20px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; background: rgba(255,255,255,0.25); color: white; cursor: pointer; transition: all 0.3s ease; transform: translateX(-50%) scale(1); box-shadow: 0 0 5px rgba(255,255,255,0.5); z-index: 10;`;
     toggleBtn.textContent = '≡';
-
+ 
     let controlsVisible = false;
     toggleBtn.addEventListener('click', () => {
         if (!map) return;
         controlsVisible = !controlsVisible;
-
+ 
         map.setOptions({
             zoomControl: false,
             streetViewControl: controlsVisible,
             fullscreenControl: controlsVisible,
             mapTypeControl: controlsVisible
         });
-
+ 
         const countryLabel = document.getElementById('country-label');
         if (controlsVisible) {
             toggleBtn.textContent = '✕';
@@ -143,7 +142,7 @@ function createPanel() {
         }
     });
 }
-
+ 
 // Google Maps Geocoder
 function getCountryName(lat, lng, callback) {
     if (!lat || !lng) { callback(""); return; }
@@ -156,7 +155,7 @@ function getCountryName(lat, lng, callback) {
         callback("");
     });
 }
-
+ 
 // Map setup
 function initMapOnce() {
     if (mapReady) return;
@@ -169,7 +168,9 @@ function initMapOnce() {
         script.onload = () => { setupMap(); };
     } else { setupMap(); }
 }
-
+ 
+let userInteracted = false;
+ 
 function setupMap() {
     map = new google.maps.Map(document.getElementById(MAP_ID), {
         center: { lat: 0, lng: 0 },
@@ -181,37 +182,43 @@ function setupMap() {
         gestureHandling: "auto",
         scrollwheel: true
     });
-
+ 
     const normalIcon = { url: ICON_URL, scaledSize: new google.maps.Size(25,25) };
     const hoverIcon = { url: ICON_URL, scaledSize: new google.maps.Size(35,35) };
-
+ 
     marker = new google.maps.Marker({
         position: { lat: 0, lng: 0 },
         map: map,
         icon: normalIcon
     });
+ 
     marker.addListener('mouseover', () => marker.setIcon(hoverIcon));
     marker.addListener('mouseout', () => marker.setIcon(normalIcon));
-
+ 
+    map.addListener('zoom_changed', () => { userInteracted = true; });
+    map.addListener('dragstart', () => { userInteracted = true; });
+ 
     mapReady = true;
 }
-
+ 
 // Country Label Settings
-function updateMapPosition() {
+function updateMapPosition(force = false) {
     if (!mapReady || !marker) return;
     const { lat, lng } = currentRoundCoordinates;
     if (!lat || !lng) return;
-
+ 
+    if (userInteracted && !force) return;
+ 
     marker.setPosition(new google.maps.LatLng(lat, lng));
     map.setCenter(new google.maps.LatLng(lat, lng));
     map.setZoom(getZoomLevelForLatLng(lat, lng));
-
+ 
     getCountryName(lat, lng, name => {
         const countryLabel = document.getElementById('country-label');
         if (countryLabel) countryLabel.textContent = name;
     });
 }
-
+ 
 // Smart Zoom for Countries
 function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Bangladesh")) return 5.7;
@@ -233,7 +240,7 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Ecuador")) return 6;
     if(isCoordInCountry(lat,lng,"Colombia")) return 5;
     if(isCoordInCountry(lat,lng,"North Macedonia")) return 7;
-    if(isCoordInCountry(lat, lng,"Bolivia")) return 4.7;
+    if(isCoordInCountry(lat,lng,"Bolivia")) return 4.7;
     if(isCoordInCountry(lat,lng,"Peru")) return 5;
     if(isCoordInCountry(lat,lng,"Malaysia")) return 6;
     if(isCoordInCountry(lat,lng,"Brazil")) return 3.5;
@@ -284,7 +291,7 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Australia")) return 3.8;
     return 5;
 }
-
+ 
 // Coordinate controls
 function isMediumEuropeanCountry(lat,lng){ const m=["Romania","Bulgaria","Hungary","Croatia","Slovenia","Serbia","Bosnia","Moldova","Poland","Lithuania","Latvia","Estonia","Netherlands","Belgium"]; return m.some(c=>isCoordInCountry(lat,lng,c)); }
 function isLargeEuropeanCountry(lat,lng){ const l=["Italy","United Kingdom","Greece","Spain","France","Germany"]; return l.some(c=>isCoordInCountry(lat,lng,c)); }
@@ -292,7 +299,7 @@ function isSmallEuropeanCountry(lat,lng){ const s=["San Marino","Monaco","Liecht
 function isLargeCountry(lat,lng){ const l=["Russia"]; return l.some(c => isCoordInCountry(lat,lng,c)); } // Avustralya ve Brezilya artık özel zoom
 function isSmallCountry(lat,lng){ return isCoordInCountry(lat,lng,"Singapore","Gibraltar"); }
 function isArchipelagoCountry(lat,lng){ const arch=["Indonesia","Philippines","Japan","Norway","New Zealand","Canary Islands"]; return arch.some(c => isCoordInCountry(lat,lng,c)); }
-
+ 
 function isCoordInCountry(lat,lng,c){
     switch(c){
         case "Mexico": return lat>14&&lat<33 && lng>-119&&lng<-86;
@@ -387,7 +394,7 @@ function isCoordInCountry(lat,lng,c){
         default: return false;
     }
 }
-
+ 
 // Observers
 function observeRoundChanges(){ const target=document.getElementById('__next')||document.body; if(!target) return; const observer=new MutationObserver(()=>{ updateMapPosition(); }); observer.observe(target,{childList:true,subtree:true}); }
 setInterval(() => {
@@ -398,7 +405,7 @@ setInterval(() => {
 function observeGameChanges(){ const target = document.getElementById('__next') || document.body; if(!target) return; const observer = new MutationObserver(() => {}); observer.observe(target,{childList:true,subtree:true}); }
 function makeDraggable(element){ const header=element.querySelector('#panel-header'); if(!header) return; let pos1=0,pos2=0,pos3=0,pos4=0; header.onmousedown=e=>{ e.preventDefault(); pos3=e.clientX; pos4=e.clientY; document.onmouseup=()=>{document.onmouseup=null;document.onmousemove=null;}; document.onmousemove=e=>{ e.preventDefault(); pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY; element.style.top=(element.offsetTop-pos2)+'px'; element.style.left=(element.offsetLeft-pos1)+'px'; }; }; }
 function observePanelResize(panel){ const observer=new ResizeObserver(()=>{ if(map) google.maps.event.trigger(map,'resize'); }); observer.observe(panel); }
-
+ 
 // Open/Close with Ctrl Key
 let panelVisible = false;
 window.addEventListener('keydown', (e) => {
@@ -414,10 +421,5 @@ window.addEventListener('keydown', (e) => {
         }
     }
 });
-
+ 
 })();
-
-
-
-
-
