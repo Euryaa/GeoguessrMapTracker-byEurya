@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Geoguessr Map Tracker by Eurya
+// @name         Geoguessr Map Tracker by Xeliyi
 // @namespace    http://tampermonkey.net/
-// @version      26.0.3
+// @version      26.0.5
 // @description  A tool with smart zoom that automatically detects the incoming location in GeoGuessr and displays it to the player via the panel.
 // @match        https://www.geoguessr.com/*
 // @grant        GM_addStyle
@@ -9,35 +9,35 @@
 // @license      BSD-2-Clause
 // ==/UserScript==
 /* global google */
- 
+
 (function() {
 'use strict';
- 
-const PANEL_ID = 'eurya-gmaps-panel';
-const MAP_ID = 'eurya-gmaps-map';
+
+const PANEL_ID = 'xeliyi-gmaps-panel';
+const MAP_ID = 'xeliyi-gmaps-map';
 const ICON_URL = 'https://i.ibb.co/VY5Jz0nB/icon.png';
-const WC25_LOGO = 'https://images.squarespace-cdn.com/content/v1/636e083394b53b69d6c3e3fb/c5706bfb-12d7-4fec-b440-adc2849c5862/GG+WC25+%28Logo%29.png';
-const WC25_URL = 'https://www.geoguessr.com/';
-const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE';
- 
+const APPLE_LOGO = 'https://substackcdn.com/image/fetch/$s_!G1lk!,f_auto,q_auto:good,fl_progressive/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F8ed3d547-94ff-48e1-9f20-8c14a7030a02_2000x2000.jpeg';
+const APPLE_URL = 'https://www.apple.com/';
+const GOOGLE_API_KEY = 'AIzaSyDG2A_QHMfTtSykt-ttEspW5ScSNF2AmQg';
+
 let map, marker, mapReady = false;
 let currentRoundCoordinates = { lat: null, lng: null };
 let lastKnownCoordinates = { lat: null, lng: null };
- 
+
 // CSS
 GM_addStyle(`
     .shine-panel::before { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(45deg, rgba(224,247,255,0) 25%, rgba(255,255,255,0.4) 50%, rgba(192,232,255,0) 75%); background-size: 400% 400%; animation: shine45 2.5s linear infinite; pointer-events: none; }
     @keyframes shine45 { 0% { background-position: 200% 200%; } 100% { background-position: -200% -200%; } }
- 
-    .eurya-shine { font-weight:600; font-size:18px; color: #ffffff; background: linear-gradient(45deg, #e0f7ff 25%, #ffffff 50%, #c0e8ff 75%); background-size: 200% 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shine 2.5s linear infinite; }
+
+    .xeliyi-shine { font-weight:600; font-size:18px; color: #ffffff; background: linear-gradient(45deg, #e0f7ff 25%, #ffffff 50%, #c0e8ff 75%); background-size: 200% 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shine 2.5s linear infinite; }
     @keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
- 
+
     #toggle-controls.shine { background: linear-gradient(45deg, #e0f7ff 25%, #ffffff 50%, #c0e8ff 75%); background-size: 200% 200%; color: black; animation: shineBtn 2s linear infinite; }
     @keyframes shineBtn { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
- 
+
     #country-label { position: absolute; top: 35px; left: 50%; transform: translateX(-50%) scale(1.2); background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(180,255,255,1)); color: black; font-size: 8px; font-weight: 540; padding: 2px 8px; border-radius: 6px; box-shadow: 0 0 15px rgba(255,255,255,0.9); z-index: 9; pointer-events: none; white-space: nowrap; display:none; transition: all 0.3s ease; }
 `);
- 
+
 // XHR hijack
 const originalOpen = XMLHttpRequest.prototype.open;
 XMLHttpRequest.prototype.open = function(method, url) {
@@ -63,7 +63,7 @@ XMLHttpRequest.prototype.open = function(method, url) {
     }
     return originalOpen.apply(this, arguments);
 };
- 
+
     const originalFetch = window.fetch;
 window.fetch = async function(...args) {
     const response = await originalFetch.apply(this, args);
@@ -84,8 +84,8 @@ window.fetch = async function(...args) {
     }).catch(()=>{});
     return response;
 };
- 
- 
+
+
 // Panel and draggable
 function createPanel() {
     if (document.getElementById(PANEL_ID)) return;
@@ -95,10 +95,10 @@ function createPanel() {
     panel.dataset.manualToggle = 'true';
     panel.innerHTML = `
         <div id="panel-header" class="shine-panel" style="background-color: black; color:white; padding:8px; height:55px; display:flex; align-items:center; justify-content:flex-start; border-top-left-radius:8px; border-top-right-radius:8px; font-size:22px; position: relative; overflow: hidden;">
-            <a href="${WC25_URL}" target="_blank"><img src="${WC25_LOGO}" style="width:60px; height:60px; margin-right:100px; margin-left:0px; margin-top:5px;"></a>
+            <a href="${APPLE_URL}" target="_blank"><img src="${APPLE_LOGO}" style="width:55px; height:55px; margin-right:100px; margin-left:0px; margin-top:5px;"></a>
             <div style="margin-left:auto; display:flex; align-items:center;">
                 <span style="color: rgba(255,255,255,0.5); font-size:16px; margin-right:3px;">by</span>
-                <span class="eurya-shine" style="font-size:16px;">Eurya</span>
+                <span class="xeliyi-shine" style="font-size:16px;">Xeliyi</span>
             </div>
             <button id="toggle-controls"></button>
             <div id="country-label"></div>
@@ -107,29 +107,29 @@ function createPanel() {
     `;
     panel.style.cssText = `position: fixed; top: 10px; right: 10px; z-index: 99999; width: 280px; height: 350px; background: #1a1a1a; border: 2px solid #ffffff; border-radius: 8px; box-shadow: 0 4px 15px rgba(255,255,255,0.3); display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow: hidden;`;
     document.body.appendChild(panel);
- 
+
     makeDraggable(panel);
     initMapOnce();
     observeRoundChanges();
     observeGameChanges();
     observePanelResize(panel);
- 
+
     const toggleBtn = document.getElementById('toggle-controls');
     toggleBtn.style.cssText = `position: absolute; top: 0px; left: 50%; width: 20px; height: 20px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; background: rgba(255,255,255,0.25); color: white; cursor: pointer; transition: all 0.3s ease; transform: translateX(-50%) scale(1); box-shadow: 0 0 5px rgba(255,255,255,0.5); z-index: 10;`;
     toggleBtn.textContent = '≡';
- 
+
     let controlsVisible = false;
     toggleBtn.addEventListener('click', () => {
         if (!map) return;
         controlsVisible = !controlsVisible;
- 
+
         map.setOptions({
             zoomControl: false,
             streetViewControl: controlsVisible,
             fullscreenControl: controlsVisible,
             mapTypeControl: controlsVisible
         });
- 
+
         const countryLabel = document.getElementById('country-label');
         if (controlsVisible) {
             toggleBtn.textContent = '✕';
@@ -142,7 +142,7 @@ function createPanel() {
         }
     });
 }
- 
+
 // Google Maps Geocoder
 function getCountryName(lat, lng, callback) {
     if (!lat || !lng) { callback(""); return; }
@@ -155,7 +155,7 @@ function getCountryName(lat, lng, callback) {
         callback("");
     });
 }
- 
+
 // Map setup
 function initMapOnce() {
     if (mapReady) return;
@@ -168,9 +168,9 @@ function initMapOnce() {
         script.onload = () => { setupMap(); };
     } else { setupMap(); }
 }
- 
+
 let userInteracted = false;
- 
+
 function setupMap() {
     map = new google.maps.Map(document.getElementById(MAP_ID), {
         center: { lat: 0, lng: 0 },
@@ -182,49 +182,52 @@ function setupMap() {
         gestureHandling: "auto",
         scrollwheel: true
     });
- 
+
     const normalIcon = { url: ICON_URL, scaledSize: new google.maps.Size(25,25) };
     const hoverIcon = { url: ICON_URL, scaledSize: new google.maps.Size(35,35) };
- 
+
     marker = new google.maps.Marker({
         position: { lat: 0, lng: 0 },
         map: map,
         icon: normalIcon
     });
- 
+
     marker.addListener('mouseover', () => marker.setIcon(hoverIcon));
     marker.addListener('mouseout', () => marker.setIcon(normalIcon));
- 
+
     map.addListener('zoom_changed', () => { userInteracted = true; });
     map.addListener('dragstart', () => { userInteracted = true; });
- 
+
     mapReady = true;
 }
- 
+
 // Country Label Settings
 function updateMapPosition(force = false) {
     if (!mapReady || !marker) return;
     const { lat, lng } = currentRoundCoordinates;
     if (!lat || !lng) return;
- 
+
     if (userInteracted && !force) return;
- 
+
     marker.setPosition(new google.maps.LatLng(lat, lng));
     map.setCenter(new google.maps.LatLng(lat, lng));
     map.setZoom(getZoomLevelForLatLng(lat, lng));
- 
+
     getCountryName(lat, lng, name => {
         const countryLabel = document.getElementById('country-label');
         if (countryLabel) countryLabel.textContent = name;
     });
 }
- 
+
 // Smart Zoom for Countries
 function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Bangladesh")) return 5.7;
+    if(isCoordInCountry(lat,lng,"San Marino")) return 11;
+    if(isCoordInCountry(lat,lng,"Bhutan")) return 7.1;
     if(isCoordInCountry(lat,lng,"Sri Lanka")) return 6;
     if(isCoordInCountry(lat,lng,"USA")) return 4;
     if(isCoordInCountry(lat,lng,"Uruguay")) return 5.5;
+    if(isCoordInCountry(lat,lng,"Nepal")) return 6.0;
     if(isCoordInCountry(lat,lng,"Gibraltar")) return 12.2;
     if(isCoordInCountry(lat,lng,"India")) return 4;
     if(isCoordInCountry(lat,lng,"Northern Ireland")) return 7;
@@ -232,13 +235,16 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Liechtenstein")) return 9.7;
     if(isCoordInCountry(lat,lng,"Canary Islands")) return 6;
     if(isCoordInCountry(lat,lng,"Puerto Rico")) return 7.5;
+    if(isCoordInCountry(lat,lng,"Isle of Man")) return 8.3;
     if(isCoordInCountry(lat,lng,"Guatemala")) return 6.5;
     if(isCoordInCountry(lat,lng,"Christmas Island")) return 10.2;
     if(isCoordInCountry(lat,lng,"Cocos Islands")) return 10.5;
     if(isCoordInCountry(lat,lng,"Macau")) return 9.3;
-    if(isCoordInCountry(lat,lng, "Ireland")) return 6;
+    if(isCoordInCountry(lat,lng,"Lithuania")) return 6;
+    if(isCoordInCountry(lat,lng,"Ireland")) return 6;
     if(isCoordInCountry(lat,lng,"Ecuador")) return 6;
     if(isCoordInCountry(lat,lng,"Colombia")) return 5;
+    if(isCoordInCountry(lat,lng,"Qatar")) return 7;
     if(isCoordInCountry(lat,lng,"North Macedonia")) return 7;
     if(isCoordInCountry(lat,lng,"Bolivia")) return 4.7;
     if(isCoordInCountry(lat,lng,"Peru")) return 5;
@@ -264,7 +270,6 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Malta")) return 9.4;
     if(isCoordInCountry(lat,lng,"Luxembourg")) return 7;
     if(isCoordInCountry(lat,lng,"Andorra")) return 9.1;
-    if(isCoordInCountry(lat,lng,"San Marino")) return 11;
     if(isCoordInCountry(lat,lng,"Philippines")) return 5.5;
     if(isCoordInCountry(lat,lng,"Monaco")) return 13;
     if(isCoordInCountry(lat,lng,"Guam")) return 9.8;
@@ -291,19 +296,20 @@ function getZoomLevelForLatLng(lat,lng){
     if(isCoordInCountry(lat,lng,"Australia")) return 3.8;
     return 5;
 }
- 
+
 // Coordinate controls
 function isMediumEuropeanCountry(lat,lng){ const m=["Romania","Bulgaria","Hungary","Croatia","Slovenia","Serbia","Bosnia","Moldova","Poland","Lithuania","Latvia","Estonia","Netherlands","Belgium"]; return m.some(c=>isCoordInCountry(lat,lng,c)); }
 function isLargeEuropeanCountry(lat,lng){ const l=["Italy","United Kingdom","Greece","Spain","France","Germany"]; return l.some(c=>isCoordInCountry(lat,lng,c)); }
 function isSmallEuropeanCountry(lat,lng){ const s=["San Marino","Monaco","Liechtenstein","Andorra"]; return s.some(c=>isCoordInCountry(lat,lng,c)); }
-function isLargeCountry(lat,lng){ const l=["Russia"]; return l.some(c => isCoordInCountry(lat,lng,c)); } // Avustralya ve Brezilya artık özel zoom
+function isLargeCountry(lat,lng){ const l=["Russia"]; return l.some(c => isCoordInCountry(lat,lng,c)); } 
 function isSmallCountry(lat,lng){ return isCoordInCountry(lat,lng,"Singapore","Gibraltar"); }
 function isArchipelagoCountry(lat,lng){ const arch=["Indonesia","Philippines","Japan","Norway","New Zealand","Canary Islands"]; return arch.some(c => isCoordInCountry(lat,lng,c)); }
- 
+
 function isCoordInCountry(lat,lng,c){
     switch(c){
         case "Mexico": return lat>14&&lat<33 && lng>-119&&lng<-86;
         case "USA": return lat>24&&lat<49 && lng>-125&&lng<-66;
+        case "San Marino": return lat>43.87 && lat<44.01 && lng>12.40 && lng<12.52;
         case "Russia": return lat>41&&lat<82 && lng>19&&lng<180;
         case "Gibraltar": return lat>36.10 && lat<36.17 && lng>-5.37 && lng<-5.32;
         case "Northern Ireland": return lat>54.0 && lat<55.4 && lng>-8.2 && lng<-5.3;
@@ -317,7 +323,6 @@ function isCoordInCountry(lat,lng,c){
         case "Philippines": return lat>4&&lat<21 && lng>116&&lng<127;
         case "Japan": return lat>24&&lat<46 && lng>123&&lng<146;
         case "Norway": return lat>57&&lat<72 && lng>4&&lng<31;
-        case "San Marino": return lat>43.9 && lat<44.0 && lng>12.44 && lng<12.48;
         case "New Zealand": return lat>-48&&lat<-33 && lng>165&&lng<180;
         case "Italy": return lat>36&&lat<47 && lng>6&&lng<19;
         case "United Kingdom": return lat>49&&lat<60 && lng>-8&&lng<2;
@@ -348,7 +353,7 @@ function isCoordInCountry(lat,lng,c){
         case "Hong Kong": return lat>22.1&&lat<22.6 && lng>113.8&&lng<114.3;
         case "Argentina": return lat>-55&&lat<-21 && lng>-73&&lng<-53;
         case "Chile": return lat>-56&&lat<-17 && lng>-75&&lng<-66;
-        case "Uruguay": return lat>-35&&lat<-30 && lng>-58&&lng<-53;
+        case "Uruguay": return lat>-35.5 && lat<-29.5 && lng>-59 && lng<-52.5;
         case "India": return lat>6&&lat<37 && lng>68&&lng<97;
         case "Thailand": return lat>5&&lat<21 && lng>97&&lng<106;
         case "Malaysia": return lat>0.5&&lat<7.5 && lng>100&&lng<120;
@@ -391,10 +396,14 @@ function isCoordInCountry(lat,lng,c){
         case "Peru": return lat > -18 && lat < -0.03 && lng > -81 && lng < -68;
         case "Colombia": return lat > -4 && lat < 13 && lng > -79 && lng < -66;
         case "Ireland": return lat > 51.3 && lat < 55.5 && lng > -10.5 && lng < -5.3;
+        case "Isle of Man": return lat>54.0 && lat<54.45 && lng>-4.8 && lng<-4.3;
+        case "Bhutan": return lat>26.6 && lat<28.3 && lng>88.6 && lng<92.2;
+        case "Nepal": return lat>26.3 && lat<30.5 && lng>80.0 && lng<88.3;
+        case "Qatar": return lat>24.4 && lat<26.3 && lng>50.6 && lng<52.2;
         default: return false;
     }
 }
- 
+
 // Observers
 function observeRoundChanges(){ const target=document.getElementById('__next')||document.body; if(!target) return; const observer=new MutationObserver(()=>{ updateMapPosition(); }); observer.observe(target,{childList:true,subtree:true}); }
 setInterval(() => {
@@ -405,7 +414,7 @@ setInterval(() => {
 function observeGameChanges(){ const target = document.getElementById('__next') || document.body; if(!target) return; const observer = new MutationObserver(() => {}); observer.observe(target,{childList:true,subtree:true}); }
 function makeDraggable(element){ const header=element.querySelector('#panel-header'); if(!header) return; let pos1=0,pos2=0,pos3=0,pos4=0; header.onmousedown=e=>{ e.preventDefault(); pos3=e.clientX; pos4=e.clientY; document.onmouseup=()=>{document.onmouseup=null;document.onmousemove=null;}; document.onmousemove=e=>{ e.preventDefault(); pos1=pos3-e.clientX; pos2=pos4-e.clientY; pos3=e.clientX; pos4=e.clientY; element.style.top=(element.offsetTop-pos2)+'px'; element.style.left=(element.offsetLeft-pos1)+'px'; }; }; }
 function observePanelResize(panel){ const observer=new ResizeObserver(()=>{ if(map) google.maps.event.trigger(map,'resize'); }); observer.observe(panel); }
- 
+
 // Open/Close with Ctrl Key
 let panelVisible = false;
 window.addEventListener('keydown', (e) => {
@@ -421,6 +430,5 @@ window.addEventListener('keydown', (e) => {
         }
     }
 });
- 
-})();
 
+})();
